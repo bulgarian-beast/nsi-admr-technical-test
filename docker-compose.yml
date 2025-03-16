@@ -5,7 +5,7 @@ services:
     image: mongo:8.0.4
     container_name: mongo
     ports:
-      - "27020:27017"
+      - "27017:27017"
     restart: always
     volumes:
       - ./volumes/mongo/data/db:/data/db
@@ -37,4 +37,20 @@ services:
       - ./volumes/rabbitmq:/var/lib/rabbitmq
     depends_on:
       mongo:
+        condition: service_healthy
+  dashboard:
+    build: ./dashboard
+    container_name: dashboard
+    environment:
+      CONTAINER_INTERNAL_PORT: ${DASHBOARD_BACKEND_PORT}
+    ports:
+      - "${DASHBOARD_BACKEND_PORT}:${DASHBOARD_BACKEND_PORT}"
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://127.0.0.1:${DASHBOARD_BACKEND_PORT}/alive" ]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+    depends_on:
+      rabbitmq:
         condition: service_healthy

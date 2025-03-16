@@ -13,11 +13,8 @@ const relationType = require("./constants/relation_type.js");
 const regex = require("./constants/regex.js");
 
 function handleValidationErrors(req, res, next) {
-    console.log(req);
     const errors = validationResult(req);
 
-    console.log("Errors:");
-    console.log(errors);
     if (!errors.isEmpty()) {
         return res.status(400).json({
             status: "error",
@@ -44,12 +41,38 @@ router.post("/register-contact", [
     check("relation").trim().escape().isIn(relationType.ALLOWED_ENTRIES)
         .withMessage({ code: "ERROR_REGISTER_RELATION", message: `Relation must be one of: ${relationType.ALLOWED_ENTRIES.join(", ")}` }),
     handleValidationErrors
-], (req, res) => {
-    res.status(200).json({});
+], async (req, res) => {
+    const message = {
+        patientID: req.body.patientID,
+        email: req.body.email,
+        lastName: req.body.lastName,
+        firstName: req.body.firstName,
+        relation: req.body.relation,
+        timestamp: new Date().toISOString()
+    };
 
-    // TO DO: Send new rabbit mq entry;
-    
-
+    try {
+        req.rabbitChannel.sendToQueue(
+            process.env.RABBITMQ_QUEUE_NAME_RELATION_CONTACT,
+            Buffer.from(JSON.stringify(message)),
+            { persistent: true },
+        );
+        console.log("Message sent to RabbitMQ:", message);
+        return res.status(200).json({
+            status: "success",
+            message: "Contact registered successfully and message sent to queue",
+            data: message
+        });
+    } catch (error) {
+        console.error("RabbitMQ Send Error:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Our services are restarting please try again later",
+            error: {
+                "code": "ERROR_RABBIT_UNAVAILABLE",
+            }
+        });
+    }
 });
 
 module.exports = router;

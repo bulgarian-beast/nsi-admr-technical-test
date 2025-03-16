@@ -17,8 +17,6 @@ RUN pkg . --out-path ./dist
 # Stage 2: Copy only binary from stage 1 and ensure non-root user is used for security
 FROM alpine:3.18
 
-ARG CONTAINER_INTERNAL_PORT=3000
-
 ENV NODE_ENV=production
 ENV CONTAINER_INTERNAL_PORT=${CONTAINER_INTERNAL_PORT}
 

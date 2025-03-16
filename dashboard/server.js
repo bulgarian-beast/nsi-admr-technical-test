@@ -7,20 +7,17 @@
 ** Modified time: 2025-03-16 15:28:47
 **/
 
-const express = require("express");
-const v1Router = require("./api/v1/router.js");
+const { initExpressApp } = require("./src/controllers/init_express_app.js");
+const { initRabbitMQChannel } = require("./src/controllers/init_rabbitmq.js");
 
-const app = express();
+async function main() {
+    const app = initExpressApp(await initRabbitMQChannel());
 
-app.use(express.json());
+    app.listen(process.env.CONTAINER_INTERNAL_PORT, () => {
+        console.log(`Server listen on http://127.0.0.1:${process.env.CONTAINER_INTERNAL_PORT}`);
+        console.log(`Healthcheck at http://127.0.0.1:${process.env.CONTAINER_INTERNAL_PORT}/alive`);
+    });
+    return 0;
+}
 
-app.use("/api/v1", v1Router);
-
-app.get("/alive", (req, res) => {
-    return res.sendStatus(200);
-});
-
-app.listen(process.env.CONTAINER_INTERNAL_PORT, () => {
-    console.log(`Server listen on http://127.0.0.1:${process.env.CONTAINER_INTERNAL_PORT}`);
-    console.log(`Healthcheck at http://127.0.0.1:${process.env.CONTAINER_INTERNAL_PORT}/alive`);
-});
+main().then((_) => 0);

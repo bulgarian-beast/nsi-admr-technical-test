@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 
 RUN npm install -g pkg && npm install
 
-COPY api api
+COPY src src
 
 COPY server.js server.js
 

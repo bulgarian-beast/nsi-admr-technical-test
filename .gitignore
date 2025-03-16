@@ -1,0 +1,5 @@
+volumes/
+dist/
+.env
+node_modules
+*-lock*

@@ -14,7 +14,7 @@ COPY server.js server.js
 RUN pkg . --out-path ./dist
 
 
-# Stage 2: Copy only binary from stage 1
+# Stage 2: Copy only binary from stage 1 and ensure non-root user is used for security
 FROM alpine:3.18
 
 ARG CONTAINER_INTERNAL_PORT=3000

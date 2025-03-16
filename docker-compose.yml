@@ -1,11 +1,15 @@
 version: "3.8"
 
+networks:
+  private_network:
+    internal: true
+  public_network:
+    driver: bridge
+
 services:
   mongo:
     image: mongo:8.0.4
     container_name: mongo
-    ports:
-      - "27017:27017"
     restart: always
     volumes:
       - ./volumes/mongo/data/db:/data/db
@@ -14,6 +18,8 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     command: [ "--auth" ]
+    networks:
+      - private_network # Allow mongo to be only visible to vitalis
     healthcheck:
       test: [ "CMD", "mongosh", "--username", "${MONGO_INITDB_ROOT_USERNAME}", "--password", "${MONGO_INITDB_ROOT_PASSWORD}", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
@@ -28,6 +34,8 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    networks:
+      - public_network
     healthcheck:
       test: [ "CMD", "rabbitmqctl", "status" ]
       interval: 10s
@@ -43,14 +51,37 @@ services:
     container_name: dashboard
     environment:
       CONTAINER_INTERNAL_PORT: ${DASHBOARD_BACKEND_PORT}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_QUEUE_NAME_RELATION_CONTACT: ${RABBITMQ_QUEUE_NAME_RELATION_CONTACT}
     ports:
       - "${DASHBOARD_BACKEND_PORT}:${DASHBOARD_BACKEND_PORT}"
+    networks:
+      - public_network
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://127.0.0.1:${DASHBOARD_BACKEND_PORT}/alive" ]
       interval: 30s
       timeout: 10s
       start_period: 5s
       retries: 3
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  vitalis:
+    build: ./vitalis
+    container_name: vitalis
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_QUEUE_NAME_RELATION_CONTACT: ${RABBITMQ_QUEUE_NAME_RELATION_CONTACT}
+    networks:
+      - private_network  # Can access mongo
+      - public_network  # Can access rabbitmq
     depends_on:
       rabbitmq:
         condition: service_healthy
